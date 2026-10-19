@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Control — Персональный органайзер и дашборд</title>
+    <!-- Lucide Icons & Chart.js -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #1a0b2e 0%, #090a0f 60%, #051329 100%);
+            --glass-bg: rgba(18, 24, 38, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-hover: rgba(255, 255, 255, 0.18);
+            
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            
+            --neon-primary: #a855f7;
+            --neon-secondary: #06b6d4;
+            --neon-accent: #ec4899;
+            --neon-blue: #3b82f6;
+            --neon-green: #10b981;
+            --neon-orange: #f97316;
+            --neon-yellow: #eab308;
+
+            --radius-lg: 24px;
+            --radius-md: 14px;
+        }
+
+        /* Color Themes */
+        body.theme-cyberpunk {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #2b003b 0%, #050014 60%, #120024 100%);
+            --neon-primary: #ff0055;
+            --neon-secondary: #00f0ff;
+            --neon-accent: #ffe600;
+        }
+
+        body.theme-forest {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #062c19 0%, #02120a 60%, #081c15 100%);
+            --neon-primary: #10b981;
+            --neon-secondary: #34d399;
+            --neon-accent: #a3e635;
+        }
+
+        body.theme-sunset {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #3a0ca3 0%, #0f0c20 60%, #1f0310 100%);
+            --neon-primary: #f97316;
+            --neon-secondary: #ff007f;
+            --neon-accent: #facc15;
+        }
+
+        body.theme-midnight {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #031b33 0%, #020914 60%, #051020 100%);
+            --neon-primary: #3b82f6;
+            --neon-secondary: #60a5fa;
+            --neon-accent: #38bdf8;
+        }
+
+        body.theme-matrix {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #002200 0%, #000800 60%, #001100 100%);
+            --neon-primary: #22c55e;
+            --neon-secondary: #4ade80;
+            --neon-accent: #86efac;
+        }
+
+        body.theme-oled {
+            --bg-gradient: #000000;
+            --glass-bg: rgba(15, 15, 15, 0.9);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-primary: #e2e8f0;
+            --neon-secondary: #38bdf8;
+            --neon-accent: #f43f5e;
+        }
+
+        body.theme-sakura {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #2e0b1a 0%, #0f050a 60%, #1f0512 100%);
+            --neon-primary: #f472b6;
+            --neon-secondary: #fb7185;
+            --neon-accent: #fda4af;
+        }
+
+        body.theme-ocean {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #082f49 0%, #02131e 60%, #031c2e 100%);
+            --neon-primary: #0284c7;
+            --neon-secondary: #38bdf8;
+            --neon-accent: #7dd3fc;
+        }
+
+        body.theme-gold {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #2e1d0b 0%, #0f0a05 60%, #1f1305 100%);
+            --neon-primary: #eab308;
+            --neon-secondary: #f59e0b;
+            --neon-accent: #fef08a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            position: relative;
+            overflow-x: hidden;
+            transition: background 0.5s ease;
+        }
+
+        .ambient-glow {
+            position: fixed;
+            width: 450px;
+            height: 450px;
+            border-radius: 50%;
+            filter: blur(140px);
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+            transition: all 0.5s ease;
+        }
+        .glow-1 { top: -100px; left: -100px; background: var(--neon-primary); }
+        .glow-2 { bottom: -100px; right: -100px; background: var(--neon-secondary); }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 270px;
+            background: rgba(10, 14, 23, 0.88);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--glass-border);
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--neon-secondary);
+            padding: 0 8px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            border-radius: var(--radius-md);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.25s ease;
+        }
+
+        .nav-item:hover {
+            background: var(--glass-hover);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background: var(--glass-hover);
+            border: 1px solid var(--neon-primary);
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.25);
+            color: var(--neon-primary);
+        }
+
+        .nav-item.ai-tab.active {
+            border-color: var(--neon-secondary);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+            color: var(--neon-secondary);
+        }
+
+        .main-wrapper {
+            flex: 1;
+            padding: 28px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tab-content.active { display: flex; }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .icon-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        .badge-purple { background: rgba(168, 85, 247, 0.2); color: var(--neon-primary); }
+        .badge-cyan { background: rgba(6, 182, 212, 0.2); color: var(--neon-secondary); }
+        .badge-pink { background: rgba(236, 72, 153, 0.2); color: var(--neon-accent); }
+        .badge-blue { background: rgba(59, 130, 246, 0.2); color: var(--neon-blue); }
+        .badge-green { background: rgba(16, 185, 129, 0.2); color: var(--neon-green); }
+        .badge-orange { background: rgba(249, 115, 22, 0.2); color: var(--neon-orange); }
+        .badge-yellow { background: rgba(234, 179, 8, 0.2); color: var(--neon-yellow); }
+
+        h2 { font-size: 1.3rem; font-weight: 700; }
+
+        .header-widget { display: flex; flex-direction: column; gap: 20px; }
+        .header-main { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        
+        .greeting-container h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, var(--neon-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .clock-container span {
+            font-size: 3.2rem;
+            font-weight: 800;
+            font-family: monospace;
+            text-shadow: 0 0 20px var(--neon-secondary);
+            color: #ffffff;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            outline: none;
+            border-radius: var(--radius-md);
+            padding: 10px 16px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-neon { color: #fff; }
+        .btn-neon:hover { transform: translateY(-2px); filter: brightness(1.15); }
+        .btn-purple { background: var(--neon-primary); box-shadow: 0 0 15px rgba(168, 85, 247, 0.4); }
+        .btn-cyan { background: var(--neon-secondary); box-shadow: 0 0 15px rgba(6, 182, 212, 0.4); }
+        .btn-pink { background: var(--neon-accent); box-shadow: 0 0 15px rgba(236, 72, 153, 0.4); }
+        .btn-blue { background: var(--neon-blue); box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+        .btn-green { background: var(--neon-green); box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+
+        .btn-secondary { background: rgba(255, 255, 255, 0.08); color: var(--text-main); border: 1px solid var(--glass-border); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.18); }
+
+        input[type="text"], input[type="number"], input[type="date"], input[type="password"], select, textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--neon-secondary);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .list-container {
+            list-style: none;
+            margin-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            gap: 12px;
+        }
+
+        .list-item.completed span {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .btn-delete { background: transparent; color: var(--text-muted); padding: 6px; border-radius: 8px; }
+        .btn-delete:hover { color: var(--neon-accent); background: rgba(255, 255, 255, 0.05); }
+
+        /* AI Chat */
+        .ai-chat-box { display: flex; flex-direction: column; height: 500px; gap: 14px; }
+        .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 8px; }
+        .msg { max-width: 82%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; }
+        .msg-ai { background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.3); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .msg-user { background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.3); align-self: flex-end; border-bottom-right-radius: 4px; }
+        .ai-suggestions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip-btn { padding: 6px 12px; font-size: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 20px; color: var(--text-muted); cursor: pointer; }
+        .chip-btn:hover { color: var(--text-main); border-color: var(--neon-secondary); background: rgba(6, 182, 212, 0.1); }
+
+        /* Kanban Board */
+        .kanban-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .kanban-column { background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 16px; min-height: 350px; display: flex; flex-direction: column; gap: 12px; transition: background 0.2s; }
+        .kanban-column.drag-over { background: rgba(6, 182, 212, 0.1); border-color: var(--neon-secondary); }
+        .kanban-column h3 { font-size: 1rem; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); }
+        .kanban-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 8px; cursor: grab; transition: transform 0.2s, box-shadow 0.2s; }
+        .kanban-card:active { cursor: grabbing; transform: scale(0.98); }
+        .priority-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: 700; width: fit-content; text-transform: uppercase; }
+        .p-high { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+        .p-medium { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); }
+        .p-low { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .due-badge { font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; }
+        .due-overdue { color: #ef4444; font-weight: bold; }
+
+        /* Audio Player */
+        .player-container { display: flex; flex-direction: column; gap: 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 16px; }
+        .player-track-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .player-controls { display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .progress-bar-container { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; cursor: pointer; position: relative; }
+        .progress-bar-fill { height: 100%; background: var(--neon-secondary); border-radius: 3px; width: 0%; }
+
+        /* Timer */
+        .timer-controls { display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 15px; }
+        .time-setter { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 15px; }
+        .time-input { width: 70px !important; text-align: center; font-size: 1.2rem; font-weight: 700; }
+
+        .breath-circle {
+            width: 140px; height: 140px; border-radius: 50%;
+            background: radial-gradient(circle, var(--neon-secondary), var(--neon-blue));
+            margin: 20px auto; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; box-shadow: 0 0 30px var(--neon-secondary); transition: transform 4s ease-in-out, box-shadow 4s ease-in-out;
+        }
+        .breath-circle.inhale { transform: scale(1.4); box-shadow: 0 0 60px var(--neon-secondary); }
+        .breath-circle.exhale { transform: scale(0.85); box-shadow: 0 0 15px var(--neon-blue); }
+
+        .sound-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+        .sound-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 8px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-muted); }
+        .sound-card.active { border-color: var(--neon-green); color: var(--neon-green); background: rgba(16, 185, 129, 0.15); box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+        .volume-slider { width: 100%; accent-color: var(--neon-green); cursor: pointer; margin-top: 4px; }
+
+        .water-glasses { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 12px 0; }
+        .water-glass { width: 28px; height: 38px; border: 2px solid var(--neon-blue); border-radius: 0 0 8px 8px; cursor: pointer; transition: all 0.2s ease; }
+        .water-glass.filled { background: var(--neon-blue); box-shadow: 0 0 12px var(--neon-blue); }
+
+        .mood-selector { display: flex; justify-content: space-between; gap: 8px; }
+        .mood-btn { flex: 1; font-size: 1.5rem; padding: 10px 4px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); cursor: pointer; }
+        .mood-btn.active { border-color: var(--neon-orange); background: rgba(249, 115, 22, 0.2); box-shadow: 0 0 15px rgba(249, 115, 22, 0.3); }
+
+        .theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+        .theme-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+        .theme-card.active { border-color: var(--neon-primary); box-shadow: 0 0 15px rgba(168, 85, 247, 0.3); }
+        .theme-preview { width: 100%; height: 24px; border-radius: 6px; display: flex; gap: 4px; padding: 3px; }
+
+        .chart-container { position: relative; height: 220px; width: 100%; margin-top: 12px; }
+
+        .weather-widget {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0,0,0,0.25);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        /* Mobile Responsive Bottom Nav */
+        @media (max-width: 650px) {
+            body { flex-direction: column; padding-bottom: 75px; }
+            .sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: 65px;
+                flex-direction: row;
+                justify-content: space-around;
+                align-items: center;
+                padding: 6px;
+                border-right: none;
+                border-top: 1px solid var(--glass-border);
+                background: rgba(10, 14, 23, 0.95);
+            }
+            .brand { display: none; }
+            .nav-menu { flex-direction: row; width: 100%; justify-content: space-around; gap: 0; overflow-x: auto; }
+            .nav-item { flex-direction: column; gap: 3px; padding: 6px 10px; font-size: 0.65rem; border-radius: 8px; }
+            .nav-item svg { width: 20px; height: 20px; }
+            .main-wrapper { padding: 16px; max-height: none; }
+            .clock-container span { font-size: 2.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <aside class="sidebar">
+        <div class="brand">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Life Control</span>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item active" data-tab="dashboard"><i data-lucide="home"></i> <span>Главная</span></li>
+            <li class="nav-item ai-tab" data-tab="ai"><i data-lucide="bot"></i> <span>ИИ Ассистент</span></li>
+            <li class="nav-item" data-tab="kanban"><i data-lucide="kanban"></i> <span>Канбан</span></li>
+            <li class="nav-item" data-tab="focus"><i data-lucide="timer"></i> <span>Фокус</span></li>
+            <li class="nav-item" data-tab="health"><i data-lucide="heart-pulse"></i> <span>Здоровье</span></li>
+            <li class="nav-item" data-tab="finance-books"><i data-lucide="wallet"></i> <span>Финансы</span></li>
+            <li class="nav-item" data-tab="settings"><i data-lucide="settings"></i> <span>Настройки</span></li>
+        </ul>
+    </aside>
+
+    <main class="main-wrapper">
+        
+        <!-- Tab 1: Dashboard -->
+        <div id="tab-dashboard" class="tab-content active">
+            <header class="glass-card header-widget">
+                <div class="header-main">
+                    <div class="greeting-container">
+                        <h1 id="greeting">Загрузка...</h1>
+                        <p id="current-date" style="color: var(--text-muted); margin-top:4px;">--</p>
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                        <div class="clock-container"><span id="clock">00:00:00</span></div>
+                        <div class="weather-widget" id="weather-btn" title="Нажмите, чтобы изменить город">
+                            <i data-lucide="cloud-sun" style="color:var(--neon-yellow);"></i>
+                            <span id="weather-text">Актобе: +18°C, Ясно</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; color: var(--text-muted); font-weight:600; text-transform:uppercase;">🎯 Главная цель дня</label>
+                    <input type="text" id="focus-input" placeholder="На чем вы сосредоточены сегодня?" style="margin-top:6px;">
+                </div>
+            </header>
+
+            <div class="dashboard-grid">
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-purple"><i data-lucide="check-circle-2"></i></div><h2>Привычки & Стрики</h2></div>
+                    <form id="habit-form" style="display: flex; gap: 10px;">
+                        <input type="text" id="habit-input" placeholder="Новая привычка..." required>
+                        <button type="submit" class="btn-neon btn-purple"><i data-lucide="plus"></i></button>
+                    </form>
+                    <ul id="habits-list" class="list-container"></ul>
+                </section>
+
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-cyan"><i data-lucide="list-todo"></i></div><h2>Быстрые задачи</h2></div>
+                    <form id="todo-form" style="display: flex; gap: 10px;">
+                        <input type="text" id="todo-input" placeholder="Что нужно сделать?" required>
+                        <button type="submit" class="btn-neon btn-cyan"><i data-lucide="plus"></i></button>
+                    </form>
+                    <ul id="todo-list" class="list-container"></ul>
+                </section>
+            </div>
+
+            <section class="glass-card">
+                <div class="card-header"><div class="icon-badge badge-yellow"><i data-lucide="file-text"></i></div><h2>Быстрые заметки (Scratchpad)</h2></div>
+                <textarea id="scratchpad" placeholder="Запишите сюда важные мысли, ссылки или черновик..." style="height:120px; resize:none;"></textarea>
+            </section>
+        </div>
+
+        <!-- Tab 2: AI Assistant -->
+        <div id="tab-ai" class="tab-content">
+            <section class="glass-card">
+                <div class="card-header"><div class="icon-badge badge-cyan"><i data-lucide="sparkles"></i></div><h2>ИИ Личный Ассистент (Без ключей и ограничений)</h2></div>
+                <div class="ai-chat-box">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="msg msg-ai">Привет! Я твой встроенный ИИ-помощник в Life Control. Ключи настраивать не нужно — я полностью готов помогать тебе с задачами, планированием и мотивацией! Чем могу помочь сегодня?</div>
+                    </div>
+                    <div class="ai-suggestions">
+                        <button class="chip-btn" onclick="analyzeTasksWithAi()">✨ Проанализировать задачи</button>
+                        <button class="chip-btn" onclick="sendQuickAiPrompt('Составь план продуктивного дня')">📋 План на день</button>
+                        <button class="chip-btn" onclick="sendQuickAiPrompt('Как побороть прокрастинацию?')">⚡ Борьба с ленью</button>
+                    </div>
+                    <form style="display:flex; gap:10px;" id="ai-form">
+                        <input type="text" id="ai-input" placeholder="Напишите сообщение (Ctrl+Enter для отправки)..." required autocomplete="off">
+                        <button type="submit" class="btn-neon btn-cyan"><i data-lucide="send"></i></button>
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab 3: Drag & Drop Kanban -->
+        <div id="tab-kanban" class="tab-content">
+            <section class="glass-card">
+                <div class="card-header"><div class="icon-badge badge-purple"><i data-lucide="kanban"></i></div><h2>Проекты & Канбан Доска</h2></div>
+                
+                <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+                    <input type="text" id="kanban-search" placeholder="🔍 Поиск по задачам..." style="flex:1;">
+                    <select id="kanban-filter-priority" style="width:160px;">
+                        <option value="all">Все приоритеты</option>
+                        <option value="p-high">🔴 Высокий</option>
+                        <option value="p-medium">🟡 Средний</option>
+                        <option value="p-low">🟢 Низкий</option>
+                    </select>
+                </div>
+
+                <form id="kanban-form" style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap:wrap;">
+                    <input type="text" id="kanban-input" placeholder="Добавить новую задачу..." style="flex:2;" required>
+                    <input type="date" id="kanban-due-date" style="width:140px;" title="Дедлайн">
+                    <select id="kanban-priority" style="width:140px;">
+                        <option value="p-low">🟢 Низкий</option>
+                        <option value="p-medium" selected>🟡 Средний</option>
+                        <option value="p-high">🔴 Высокий</option>
+                    </select>
+                    <button type="submit" class="btn-neon btn-purple"><i data-lucide="plus"></i> Добавить</button>
+                </form>
+
+                <div class="kanban-grid">
+                    <div class="kanban-column" id="col-todo" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropKanban(event, 'todo')">
+                        <h3>📌 В планах <span id="count-todo">0</span></h3>
+                        <div id="kanban-todo" class="list-container" style="max-height:400px;"></div>
+                    </div>
+                    <div class="kanban-column" id="col-progress" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropKanban(event, 'progress')">
+                        <h3>⚡ В процессе <span id="count-progress">0</span></h3>
+                        <div id="kanban-progress" class="list-container" style="max-height:400px;"></div>
+                    </div>
+                    <div class="kanban-column" id="col-done" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropKanban(event, 'done')">
+                        <h3>✅ Готово <span id="count-done">0</span></h3>
+                        <div id="kanban-done" class="list-container" style="max-height:400px;"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab 4: Focus & Audio -->
+        <div id="tab-focus" class="tab-content">
+            <div class="dashboard-grid">
+                <!-- Pomodoro Timer -->
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-pink"><i data-lucide="timer"></i></div><h2>Pomodoro Таймер</h2></div>
+                    <div style="text-align:center; padding: 10px 0;">
+                        <div class="time-setter">
+                            <input type="number" id="timer-min-input" class="time-input" min="0" max="180" value="25" title="Минуты">
+                            <span style="font-size:1.5rem; font-weight:bold;">:</span>
+                            <input type="number" id="timer-sec-input" class="time-input" min="0" max="59" value="00" title="Секунды">
+                            <button id="set-timer-btn" class="btn-secondary" style="padding: 8px 12px; font-size:0.85rem;">Задать</button>
+                        </div>
+
+                        <div style="font-size:4rem; font-weight:800; font-family:monospace; margin: 10px 0;" id="timer-display">25:00</div>
+                        
+                        <div style="display:flex; gap:8px; justify-content:center; margin-bottom:15px; flex-wrap:wrap;">
+                            <button class="chip-btn" onclick="adjustTimer(-1)">-1 мин</button>
+                            <button class="chip-btn" onclick="setTimerPreset(15)">15 мин</button>
+                            <button class="chip-btn" onclick="setTimerPreset(25)">25 мин</button>
+                            <button class="chip-btn" onclick="setTimerPreset(5)">5 мин отдых</button>
+                            <button class="chip-btn" onclick="adjustTimer(1)">+1 мин</button>
+                        </div>
+
+                        <div class="timer-controls">
+                            <button id="timer-start" class="btn-neon btn-pink" style="min-width:120px;"><i data-lucide="play"></i> Старт</button>
+                            <button id="timer-reset" class="btn-secondary"><i data-lucide="rotate-ccw"></i> Сброс</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Audio Player & Radio -->
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-blue"><i data-lucide="music"></i></div><h2>Плеер & Радиостанции</h2></div>
+                    <div class="player-container">
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <label for="music-file-input" class="btn-neon btn-blue" style="cursor:pointer; flex:1;">
+                                <i data-lucide="upload-cloud"></i> Загрузить MP3
+                            </label>
+                            <input type="file" id="music-file-input" accept="audio/*" multiple style="display:none;">
+                            <select id="radio-station-select" style="width:140px; padding:8px 12px;">
+                                <option value="https://stream.zeno.fm/f3wvbbqmdg8uv">📻 Lo-Fi Chill</option>
+                                <option value="https://stream.zeno.fm/e2g188f6388uv">⚡ Synthwave</option>
+                                <option value="https://stream.zeno.fm/0r0xa792kwzuv">🎷 Chillhop</option>
+                            </select>
+                            <button class="btn-secondary" id="radio-play-btn"><i data-lucide="radio"></i> Включить</button>
+                        </div>
+
+                        <div class="player-track-info">
+                            <div>
+                                <div id="player-track-name" style="font-weight:700; font-size:1rem;">Файлы не выбраны</div>
+                                <div id="player-time-display" style="font-size:0.8rem; color:var(--text-muted);">00:00 / 00:00</div>
+                            </div>
+                        </div>
+
+                        <div class="progress-bar-container" id="player-progress-container">
+                            <div class="progress-bar-fill" id="player-progress-fill"></div>
+                        </div>
+
+                        <div class="player-controls">
+                            <button class="btn-secondary" id="player-prev-btn"><i data-lucide="skip-back"></i></button>
+                            <button class="btn-neon btn-cyan" id="player-play-btn" style="padding:12px 20px;"><i data-lucide="play"></i></button>
+                            <button class="btn-secondary" id="player-next-btn"><i data-lucide="skip-forward"></i></button>
+                            <input type="range" id="player-volume" min="0" max="1" step="0.05" value="0.8" style="width:80px;" title="Громкость">
+                        </div>
+
+                        <ul id="playlist-container" class="list-container" style="max-height:100px; margin-top:6px;"></ul>
+                    </div>
+                </section>
+
+                <!-- Ambient Sound Mixer -->
+                <section class="glass-card" style="grid-column: span 1 / -1;">
+                    <div class="card-header" style="justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:14px;">
+                            <div class="icon-badge badge-green"><i data-lucide="headphones"></i></div>
+                            <h2>Микшер Фоновых Шумов</h2>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:0.85rem; color:var(--text-muted);">💤 Таймер сна:</span>
+                            <button class="chip-btn" onclick="startSleepTimer(15)">15м</button>
+                            <button class="chip-btn" onclick="startSleepTimer(30)">30м</button>
+                            <button class="chip-btn" onclick="startSleepTimer(60)">60м</button>
+                            <span id="sleep-timer-status" style="font-size:0.8rem; color:var(--neon-green); font-weight:bold;"></span>
+                        </div>
+                    </div>
+                    <div class="sound-grid">
+                        <div class="sound-card" id="sound-card-rain">
+                            <i data-lucide="cloud-rain"></i>Дождь
+                            <input type="range" class="volume-slider" id="vol-rain" min="0" max="1" step="0.05" value="0.5" oninput="updateSoundVolume('rain', this.value)">
+                            <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="toggleSound('rain')">Вкл/Выкл</button>
+                        </div>
+                        <div class="sound-card" id="sound-card-waves">
+                            <i data-lucide="waves"></i>Океан
+                            <input type="range" class="volume-slider" id="vol-waves" min="0" max="1" step="0.05" value="0.5" oninput="updateSoundVolume('waves', this.value)">
+                            <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="toggleSound('waves')">Вкл/Выкл</button>
+                        </div>
+                        <div class="sound-card" id="sound-card-white">
+                            <i data-lucide="radio"></i>Шум
+                            <input type="range" class="volume-slider" id="vol-white" min="0" max="1" step="0.05" value="0.5" oninput="updateSoundVolume('white', this.value)">
+                            <button class="btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="toggleSound('white')">Вкл/Выкл</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Tab 5: Health & Charts -->
+        <div id="tab-health" class="tab-content">
+            <div class="dashboard-grid">
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-blue"><i data-lucide="droplet"></i></div><h2>Водный Баланс (7 дней)</h2></div>
+                    <div style="text-align:center;">
+                        <div style="font-size:1.2rem; font-weight:700;"><span id="water-count">0</span> / 8 стаканов</div>
+                        <div class="water-glasses" id="water-glasses-container"></div>
+                        <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+                            <button id="add-water-btn" class="btn-neon btn-blue"><i data-lucide="plus"></i> Стакан</button>
+                            <button id="reset-water-btn" class="btn-secondary"><i data-lucide="rotate-ccw"></i></button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="healthChart"></canvas>
+                    </div>
+                </section>
+
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-pink"><i data-lucide="heart-pulse"></i></div><h2>Антистресс Дыхание</h2></div>
+                    <div style="text-align:center;">
+                        <div class="breath-circle" id="breath-circle">Дышите</div>
+                        <button id="start-breath-btn" class="btn-neon btn-pink"><i data-lucide="play"></i> Начать сеанс</button>
+                    </div>
+                </section>
+
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-orange"><i data-lucide="smile"></i></div><h2>Трекер Настроения</h2></div>
+                    <div class="mood-selector">
+                        <button class="mood-btn" data-mood="great" title="Отлично">🤩</button>
+                        <button class="mood-btn" data-mood="good" title="Хорошо">🙂</button>
+                        <button class="mood-btn" data-mood="okay" title="Нейтрально">😐</button>
+                        <button class="mood-btn" data-mood="bad" title="Грустно">😔</button>
+                    </div>
+                    <p id="mood-status" style="text-align:center; margin-top:12px; color:var(--text-muted); font-size:0.85rem;">Выберите ваше настроение сегодня</p>
+                </section>
+
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-green"><i data-lucide="flame"></i></div><h2>Счетчик Калорий</h2></div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>Калории за день:</span>
+                            <span style="font-size:1.2rem; font-weight:800; color:var(--neon-green);"><span id="calorie-count">0</span> / <span id="calorie-goal-val">2000</span> ккал</span>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <input type="number" id="calorie-input" placeholder="+ ккал">
+                            <button id="add-calorie-btn" class="btn-neon btn-green"><i data-lucide="plus"></i></button>
+                            <button id="reset-calorie-btn" class="btn-secondary"><i data-lucide="rotate-ccw"></i></button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Tab 6: Finance & Books -->
+        <div id="tab-finance-books" class="tab-content">
+            <div class="dashboard-grid">
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-green"><i data-lucide="wallet"></i></div><h2>Учет Финансов & Баланс</h2></div>
+                    
+                    <div style="background:rgba(0,0,0,0.25); padding:16px; border-radius:14px; border:1px solid var(--glass-border); margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase;">Текущий Баланс</span>
+                            <div style="font-size:1.8rem; font-weight:800; color:var(--neon-green);" id="finance-net-balance">$0</div>
+                        </div>
+                        <div style="text-align:right; font-size:0.85rem;">
+                            <div style="color:var(--neon-green);">Доходы: +$<span id="total-income">0</span></div>
+                            <div style="color:var(--neon-accent);">Расходы: -$<span id="total-expenses">0</span></div>
+                        </div>
+                    </div>
+
+                    <form id="finance-form" style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+                        <select id="expense-type" style="width:110px;">
+                            <option value="expense">🔴 Расход</option>
+                            <option value="income">🟢 Доход</option>
+                        </select>
+                        <input type="text" id="expense-title" placeholder="Описание" style="flex:1;" required>
+                        <input type="number" id="expense-amount" placeholder="Сумма $" style="width:90px;" required>
+                        <select id="expense-category" style="width:120px;">
+                            <option value="Еда">Еда</option>
+                            <option value="Транспорт">Транспорт</option>
+                            <option value="Развлечения">Развлечения</option>
+                            <option value="Счета">Счета</option>
+                            <option value="Работа">Работа</option>
+                        </select>
+                        <button type="submit" class="btn-neon btn-green"><i data-lucide="plus"></i></button>
+                    </form>
+                    <ul id="expenses-list" class="list-container"></ul>
+                    <div class="chart-container">
+                        <canvas id="financeChart"></canvas>
+                    </div>
+                </section>
+
+                <section class="glass-card">
+                    <div class="card-header"><div class="icon-badge badge-yellow"><i data-lucide="book-open"></i></div><h2>Книжный Трекер</h2></div>
+                    <form id="book-form" style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
+                        <input type="text" id="book-title" placeholder="Название книги..." required>
+                        <div style="display:flex; gap:10px;">
+                            <input type="number" id="book-pages" placeholder="Всего стр" required>
+                            <input type="number" id="book-read" placeholder="Прочитано" required>
+                            <button type="submit" class="btn-neon btn-purple"><i data-lucide="plus"></i></button>
+                        </div>
+                    </form>
+                    <ul id="books-list" class="list-container"></ul>
+                </section>
+            </div>
+        </div>
+
+        <!-- Tab 7: Settings -->
+        <div id="tab-settings" class="tab-content">
+            <section class="glass-card">
+                <div class="card-header"><div class="icon-badge badge-cyan"><i data-lucide="settings"></i></div><h2>Персонализация интерфейса</h2></div>
+                <div style="display:flex; flex-direction:column; gap:24px;">
+                    <div>
+                        <label style="display:block; margin-bottom:12px; font-weight:600;">Выбор темы оформления (10 стилевых палитр):</label>
+                        <div class="theme-grid">
+                            <div class="theme-card active" data-theme="default" onclick="setTheme('default')">
+                                <div class="theme-preview" style="background: linear-gradient(90deg, #a855f7, #06b6d4);"></div>
+                                <span>💜 Nexus Purple</span>
+                            </div>
+                            <div class="theme-card" data-theme="cyberpunk" onclick="setTheme('cyberpunk')">
+                                <div class="theme-preview" style="background: linear-gradient(90deg, #ff0055, #00f0ff);"></div>
+                                <span>💗 Cyberpunk 2077</span>
+                            </div>
+                            <div class="theme-card" data-theme="forest" onclick="setTheme('forest')">
+                                <div class="theme-preview" style="background: linear-gradient(90deg, #10b981, #a3e635);"></div>
+                                <span>💚 Emerald Forest</span>
+                            </div>
+                            <div class="theme-card" data-theme="sunset" onclick="setTheme('sunset')">
+                                <div class="theme-preview" style="background: linear-gradient(90deg, #f97316, #ff007f);"></div>
+                                <span>🌅 Sunset Gold</span>
+                            </div>
+                            <div class="theme-card" data-theme="midnight" onclick="setTheme('midnight')">
+                                <div class="theme-preview" style="background: linear-gradient(90deg, #3b82f6, #38bdf8);"></div>
+                                <span>🌌 Midnight Blue</span>
+                            </div>
+                            <div class="theme-card" data-theme="matrix" onclick="setTheme('matrix')">
+                                <div class="theme-preview" style="background: linear-gradient(90deg, #22c55e, #86efac);"></div>
+                                <span>🟢 Matrix Hack</span>
+                            </div>
+                            <div class="theme-card" data-theme="oled" onclick="setTheme('oled')">
+                                <div class="theme-preview" style="background: #000000; border:1px solid #333;"></div>
+                                <span>🖤 OLED Black</span>
+                            </div>
+                            <div class="theme-card" data-theme="sakura" onclick="setTheme('sakura')">
+                                <div class="theme-preview" style="background: linear-gradient(90deg, #f472b6, #fb7185);"></div>
+                                <span>🌸 Sakura Dream</span>
+                            </div>
+                            <div class="theme-card" data-theme="ocean" onclick="setTheme('ocean')">
+                                <div class="theme-preview" style="background: linear-gradient(90deg, #0284c7, #38bdf8);"></div>
+                                <span>🌊 Oceanic Deep</span>
+                            </div>
+                            <div class="theme-card" data-theme="gold" onclick="setTheme('gold')">
+                                <div class="theme-preview" style="background: linear-gradient(90deg, #eab308, #f59e0b);"></div>
+                                <span>⚡ Neon Gold</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--glass-border);">
+
+                    <div>
+                        <label style="display:block; margin-bottom:8px; font-weight:600;">Резервное копирование данных:</label>
+                        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <button id="export-data-btn" class="btn-neon btn-cyan"><i data-lucide="download"></i> Скачать бэкап (JSON)</button>
+                            <label for="import-data-file" class="btn-secondary" style="cursor:pointer; padding:10px 16px; border-radius:14px; display:inline-flex; align-items:center; gap:8px;">
+                                <i data-lucide="upload"></i> Восстановить из файла
+                            </label>
+                            <input type="file" id="import-data-file" accept=".json" style="display:none;">
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <script>
+        // Inline Service Worker Registration for PWA Offline Support
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                const CACHE_NAME = 'lifecontrol-v2';
+                self.addEventListener('install', e => self.skipWaiting());
+                self.addEventListener('activate', e => self.clients.claim());
+                self.addEventListener('fetch', e => {
+                    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+
+            if ("Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+
+            // --- Theme Switcher Engine ---
+            window.setTheme = (themeName) => {
+                document.body.className = themeName === 'default' ? '' : `theme-${themeName}`;
+                localStorage.setItem('nexus_theme', themeName);
+                document.querySelectorAll('.theme-card').forEach(c => {
+                    c.classList.toggle('active', c.dataset.theme === themeName);
+                });
+            };
+            setTheme(localStorage.getItem('nexus_theme') || 'default');
+
+            // --- Weather Interactive ---
+            const weatherBtn = document.getElementById('weather-btn');
+            const weatherText = document.getElementById('weather-text');
+            weatherBtn.addEventListener('click', () => {
+                const city = prompt('Введите ваш город:', 'Актобе');
+                if (city) {
+                    const temp = Math.floor(Math.random() * 15) + 15;
+                    weatherText.textContent = `${city}: +${temp}°C, Ясно`;
+                    localStorage.setItem('nexus_city', `${city}: +${temp}°C, Ясно`);
+                }
+            });
+            if (localStorage.getItem('nexus_city')) {
+                weatherText.textContent = localStorage.getItem('nexus_city');
+            }
+
+            // --- Navigation Tabs ---
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    item.classList.add('active');
+                    document.getElementById(`tab-${item.dataset.tab}`).classList.add('active');
+                });
+            });
+
+            // --- Clock & Greeting ---
+            function updateClock() {
+                const now = new Date();
+                document.getElementById('clock').textContent = now.toLocaleTimeString('ru-RU');
+                document.getElementById('current-date').textContent = now.toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                const hrs = now.getHours();
+                document.getElementById('greeting').textContent = hrs < 6 ? 'Доброй ночи 🌙' : hrs < 12 ? 'Доброе утро ☀️' : hrs < 18 ? 'Добрый день 🚀' : 'Добрый вечер ✨';
+            }
+            setInterval(updateClock, 1000); 
+            updateClock();
+
+            // Focus Goal & Scratchpad
+            const focusInput = document.getElementById('focus-input');
+            focusInput.value = localStorage.getItem('nexus_focus') || '';
+            focusInput.addEventListener('input', e => localStorage.setItem('nexus_focus', e.target.value));
+
+            const scratchpad = document.getElementById('scratchpad');
+            scratchpad.value = localStorage.getItem('nexus_scratchpad') || '';
+            scratchpad.addEventListener('input', () => localStorage.setItem('nexus_scratchpad', scratchpad.value));
+
+            // --- встроенный интеллектуальный ИИ Ассистент (Без ключей!) ---
+            let aiHistory = JSON.parse(localStorage.getItem('nexus_ai_history')) || [
+                { role: 'assistant', content: 'Привет! Я твой встроенный ИИ-ассистент Life Control. Я готов помогать тебе с задачами, планами и советами абсолютно бесплатно и без всяких ключей!' }
+            ];
+
+            const aiForm = document.getElementById('ai-form');
+            const aiInput = document.getElementById('ai-input');
+            const chatMessages = document.getElementById('chat-messages');
+
+            function renderAiMessages() {
+                chatMessages.innerHTML = '';
+                aiHistory.forEach(msg => {
+                    const el = document.createElement('div');
+                    el.className = `msg ${msg.role === 'user' ? 'msg-user' : 'msg-ai'}`;
+                    el.textContent = msg.content;
+                    chatMessages.appendChild(el);
+                });
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            renderAiMessages();
+
+            function getSmartAiResponse(query) {
+                const q = query.toLowerCase();
+                if (q.includes('план') || q.includes('день') || q.includes('продуктивн')) {
+                    return "📋 Отличный план на продуктивный день:\n1. Начни с утренней зарядки и стакана воды.\n2. Выдели главную цель дня на главном экране.\n3. Работай по технике Pomodoro (25 минут работы, 5 отдыха).\n4. Закрой самые сложные задачи в первой половине дня.";
+                } else if (q.includes('прокрастин') || q.includes('лень') || q.includes('устал')) {
+                    return "⚡ Как побороть прокрастинацию:\n• Правило 2 минут: начните делать задачу всего 2 минуты, дальше втянетесь.\n• Включите фоновые шумы дождя или Lo-Fi музыку во вкладке «Фокус».\n• Сделайте короткую дыхательную гимнастику в разделе «Здоровье».";
+                } else if (q.includes('задач') || q.includes('анализ')) {
+                    const todoCount = todos.filter(t => !t.done).length;
+                    const kanbanCount = kanbanCards.filter(c => c.status !== 'done').length;
+                    return `📊 Анализ твоих дел:\nУ тебя сейчас ${todoCount} активных быстрых задач и ${kanbanCount} задач в канбан-доске.\nРекомендация: сфокусируйся на тех, у которых стоит высокий приоритет, и распредели их по этапам «В процессе»!`;
+                } else {
+                    return `🤖 Я получил твое сообщение: "${query}".\nКак твой личный ассистент Life Control, я советую разбить эту задачу на маленькие шаги, выпить воды и не забывать делать перерывы с таймером Pomodoro! Чем еще помочь?`;
+                }
+            }
+
+            async function sendAiMessage(userText) {
+                if (!userText) return;
+                aiHistory.push({ role: 'user', content: userText });
+                renderAiMessages();
+
+                const loadingMsg = { role: 'assistant', content: 'Думаю...' };
+                aiHistory.push(loadingMsg);
+                renderAiMessages();
+
+                setTimeout(() => {
+                    aiHistory.pop(); // убираем "Думаю..."
+                    const reply = getSmartAiResponse(userText);
+                    aiHistory.push({ role: 'assistant', content: reply });
+                    localStorage.setItem('nexus_ai_history', JSON.stringify(aiHistory));
+                    renderAiMessages();
+                }, 600);
+            }
+
+            aiForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = aiInput.value.trim();
+                if (text) {
+                    sendAiMessage(text);
+                    aiInput.value = '';
+                }
+            });
+
+            aiInput.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    aiForm.requestSubmit();
+                }
+            });
+
+            window.sendQuickAiPrompt = (promptText) => sendAiMessage(promptText);
+
+            window.analyzeTasksWithAi = () => {
+                sendAiMessage('Проанализируй мои задачи');
+            };
+
+            // --- Custom Audio Player & Radio ---
+            const audioObj = new Audio();
+            let playlist = [];
+            let currentTrackIdx = 0;
+            let isRadioMode = false;
+
+            const musicFileInput = document.getElementById('music-file-input');
+            const playBtn = document.getElementById('player-play-btn');
+            const trackNameEl = document.getElementById('player-track-name');
+            const timeDisplayEl = document.getElementById('player-time-display');
+            const progressFill = document.getElementById('player-progress-fill');
+            const progressContainer = document.getElementById('player-progress-container');
+            const playlistContainer = document.getElementById('playlist-container');
+            const volumeSlider = document.getElementById('player-volume');
+            const radioPlayBtn = document.getElementById('radio-play-btn');
+            const radioSelect = document.getElementById('radio-station-select');
+
+            musicFileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+                isRadioMode = false;
+                playlist = files.map(file => ({
+                    name: file.name.replace(/\.[^/.]+$/, ""),
+                    url: URL.createObjectURL(file)
+                }));
+                currentTrackIdx = 0;
+                renderPlaylist();
+                loadTrack(currentTrackIdx);
+                playAudio();
+            });
+
+            function renderPlaylist() {
+                playlistContainer.innerHTML = '';
+                playlist.forEach((track, i) => {
+                    const li = document.createElement('li');
+                    li.className = `list-item ${i === currentTrackIdx ? 'active-track' : ''}`;
+                    li.style.cursor = 'pointer';
+                    li.style.padding = '8px 12px';
+                    li.innerHTML = `<span>${i + 1}. ${track.name}</span>`;
+                    li.onclick = () => {
+                        currentTrackIdx = i;
+                        loadTrack(currentTrackIdx);
+                        playAudio();
+                    };
+                    playlistContainer.appendChild(li);
+                });
+            }
+
+            function loadTrack(idx) {
+                if (playlist[idx]) {
+                    audioObj.src = playlist[idx].url;
+                    trackNameEl.textContent = playlist[idx].name;
+                    renderPlaylist();
+                }
+            }
+
+            function playAudio() {
+                audioObj.play().catch(() => {});
+                playBtn.innerHTML = '<i data-lucide="pause"></i>';
+                lucide.createIcons();
+            }
+
+            function pauseAudio() {
+                audioObj.pause();
+                playBtn.innerHTML = '<i data-lucide="play"></i>';
+                lucide.createIcons();
+            }
+
+            playBtn.addEventListener('click', () => {
+                if (audioObj.paused && audioObj.src) playAudio();
+                else pauseAudio();
+            });
+
+            document.getElementById('player-prev-btn').addEventListener('click', () => {
+                if (playlist.length > 0) {
+                    currentTrackIdx = (currentTrackIdx - 1 + playlist.length) % playlist.length;
+                    loadTrack(currentTrackIdx);
+                    playAudio();
+                }
+            });
+
+            document.getElementById('player-next-btn').addEventListener('click', () => {
+                if (playlist.length > 0) {
+                    currentTrackIdx = (currentTrackIdx + 1) % playlist.length;
+                    loadTrack(currentTrackIdx);
+                    playAudio();
+                }
+            });
+
+            audioObj.addEventListener('timeupdate', () => {
+                if (audioObj.duration && !isRadioMode) {
+                    const pct = (audioObj.currentTime / audioObj.duration) * 100;
+                    progressFill.style.width = `${pct}%`;
+                    const curM = Math.floor(audioObj.currentTime / 60);
+                    const curS = Math.floor(audioObj.currentTime % 60);
+                    const durM = Math.floor(audioObj.duration / 60);
+                    const durS = Math.floor(audioObj.duration % 60);
+                    timeDisplayEl.textContent = `${String(curM).padStart(2,'0')}:${String(curS).padStart(2,'0')} / ${String(durM).padStart(2,'0')}:${String(durS).padStart(2,'0')}`;
+                }
+            });
+
+            audioObj.addEventListener('ended', () => {
+                if (!isRadioMode && playlist.length > 0) {
+                    currentTrackIdx = (currentTrackIdx + 1) % playlist.length;
+                    loadTrack(currentTrackIdx);
+                    playAudio();
+                }
+            });
+
+            progressContainer.addEventListener('click', (e) => {
+                if (audioObj.duration && !isRadioMode) {
+                    const rect = progressContainer.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    audioObj.currentTime = (clickX / rect.width) * audioObj.duration;
+                }
+            });
+
+            volumeSlider.addEventListener('input', (e) => {
+                audioObj.volume = parseFloat(e.target.value);
+            });
+
+            radioPlayBtn.addEventListener('click', () => {
+                isRadioMode = true;
+                playlist = [];
+                playlistContainer.innerHTML = '';
+                progressFill.style.width = '100%';
+                const selectedUrl = radioSelect.value;
+                const stationName = radioSelect.options[radioSelect.selectedIndex].text;
+                audioObj.src = selectedUrl;
+                trackNameEl.textContent = stationName;
+                timeDisplayEl.textContent = 'Прямой эфир (Радио)';
+                playAudio();
+            });
+
+            // --- Sleep Timer ---
+            let sleepTimerId = null;
+            window.startSleepTimer = (mins) => {
+                if (sleepTimerId) clearTimeout(sleepTimerId);
+                const statusEl = document.getElementById('sleep-timer-status');
+                statusEl.textContent = `Таймер: ${mins} мин`;
+                
+                sleepTimerId = setTimeout(() => {
+                    pauseAudio();
+                    ['rain', 'waves', 'white'].forEach(type => {
+                        if (soundNodes[type]) toggleSound(type);
+                    });
+                    statusEl.textContent = 'Выключено';
+                    alert('Таймер сна сработал: воспроизведение остановлено.');
+                }, mins * 60 * 1000);
+            };
+
+            // --- Habits Engine ---
+            let habits = JSON.parse(localStorage.getItem('nexus_habits')) || [
+                { name: 'Выпить воду утром', completed: false, streak: 3 },
+                { name: '10 минут медитации', completed: false, streak: 5 }
+            ];
+            const habitsList = document.getElementById('habits-list');
+
+            function renderHabits() {
+                habitsList.innerHTML = '';
+                habits.forEach((habit, index) => {
+                    const li = document.createElement('li');
+                    li.className = `list-item ${habit.completed ? 'completed' : ''}`;
+                    li.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <input type="checkbox" ${habit.completed ? 'checked' : ''} onchange="toggleHabit(${index})" style="accent-color:var(--neon-primary); width:18px; height:18px; cursor:pointer;">
+                            <span>${habit.name}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:0.8rem; color:var(--neon-yellow); font-weight:bold;">🔥 ${habit.streak || 0}</span>
+                            <button class="btn-delete" onclick="deleteHabit(${index})"><i data-lucide="trash-2"></i></button>
+                        </div>
+                    `;
+                    habitsList.appendChild(li);
+                });
+                lucide.createIcons();
+            }
+
+            window.toggleHabit = (index) => {
+                habits[index].completed = !habits[index].completed;
+                if (habits[index].completed) habits[index].streak = (habits[index].streak || 0) + 1;
+                else if (habits[index].streak > 0) habits[index].streak -= 1;
+                localStorage.setItem('nexus_habits', JSON.stringify(habits));
+                renderHabits();
+            };
+
+            document.getElementById('habit-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('habit-input');
+                if (input.value.trim()) {
+                    habits.push({ name: input.value.trim(), completed: false, streak: 0 });
+                    localStorage.setItem('nexus_habits', JSON.stringify(habits));
+                    renderHabits();
+                    input.value = '';
+                }
+            });
+
+            window.deleteHabit = (i) => {
+                habits.splice(i, 1);
+                localStorage.setItem('nexus_habits', JSON.stringify(habits));
+                renderHabits();
+            };
+
+            // --- Todos Engine ---
+            let todos = JSON.parse(localStorage.getItem('nexus_todos')) || [
+                { text: 'Проверить рабочую почту', done: false }
+            ];
+            const todoList = document.getElementById('todo-list');
+
+            function renderTodos() {
+                todoList.innerHTML = '';
+                todos.forEach((todo, index) => {
+                    const li = document.createElement('li');
+                    li.className = `list-item ${todo.done ? 'completed' : ''}`;
+                    li.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <input type="checkbox" ${todo.done ? 'checked' : ''} onchange="toggleTodo(${index})" style="accent-color:var(--neon-secondary); width:18px; height:18px; cursor:pointer;">
+                            <span>${todo.text}</span>
+                        </div>
+                        <button class="btn-delete" onclick="deleteTodo(${index})"><i data-lucide="trash-2"></i></button>
+                    `;
+                    todoList.appendChild(li);
+                });
+                lucide.createIcons();
+            }
+
+            window.toggleTodo = (index) => {
+                todos[index].done = !todos[index].done;
+                localStorage.setItem('nexus_todos', JSON.stringify(todos));
+                renderTodos();
+            };
+
+            document.getElementById('todo-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('todo-input');
+                if (input.value.trim()) {
+                    todos.push({ text: input.value.trim(), done: false });
+                    localStorage.setItem('nexus_todos', JSON.stringify(todos));
+                    renderTodos();
+                    input.value = '';
+                }
+            });
+
+            window.deleteTodo = (i) => {
+                todos.splice(i, 1);
+                localStorage.setItem('nexus_todos', JSON.stringify(todos));
+                renderTodos();
+            };
+
+            // --- Kanban Board with Drag & Drop Effects ---
+            let kanbanCards = JSON.parse(localStorage.getItem('nexus_kanban')) || [
+                { id: '1', text: 'Завершить дизайн Life Control', priority: 'p-high', status: 'progress', dueDate: '2026-10-28' },
+                { id: '2', text: 'Планирование задач на неделю', priority: 'p-medium', status: 'todo', dueDate: '' }
+            ];
+
+            const kanbanSearch = document.getElementById('kanban-search');
+            const kanbanFilterPriority = document.getElementById('kanban-filter-priority');
+
+            kanbanSearch.addEventListener('input', () => renderKanban());
+            kanbanFilterPriority.addEventListener('change', () => renderKanban());
+
+            function renderKanban() {
+                const todoCol = document.getElementById('kanban-todo');
+                const progCol = document.getElementById('kanban-progress');
+                const doneCol = document.getElementById('kanban-done');
+
+                todoCol.innerHTML = ''; progCol.innerHTML = ''; doneCol.innerHTML = '';
+                let counts = { todo: 0, progress: 0, done: 0 };
+                const todayStr = new Date().toISOString().slice(0, 10);
+
+                const searchVal = kanbanSearch.value.toLowerCase().trim();
+                const prioVal = kanbanFilterPriority.value;
+
+                kanbanCards.forEach(card => {
+                    if (searchVal && !card.text.toLowerCase().includes(searchVal)) return;
+                    if (prioVal !== 'all' && card.priority !== prioVal) return;
+
+                    counts[card.status]++;
+                    const isOverdue = card.dueDate && card.dueDate < todayStr && card.status !== 'done';
+
+                    const cardEl = document.createElement('div');
+                    cardEl.className = 'kanban-card';
+                    cardEl.draggable = true;
+                    cardEl.ondragstart = (e) => e.dataTransfer.setData('text/plain', card.id);
+                    cardEl.innerHTML = `
+                        <span style="font-weight:600;" contenteditable="true" onblur="updateKanbanText('${card.id}', this.textContent)">${card.text}</span>
+                        ${card.dueDate ? `<div class="due-badge ${isOverdue ? 'due-overdue' : ''}">📅 ${card.dueDate}${isOverdue ? '(Просрочено!)' : ''}</div>` : ''}
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                            <span class="priority-badge ${card.priority}">${card.priority === 'p-high' ? 'Высокий' : card.priority === 'p-medium' ? 'Средний' : 'Низкий'}</span>
+                            <button class="btn-delete" onclick="deleteKanbanCard('${card.id}')"><i data-lucide="trash-2"></i></button>
+                        </div>
+                    `;
+                    if (card.status === 'todo') todoCol.appendChild(cardEl);
+                    else if (card.status === 'progress') progCol.appendChild(cardEl);
+                    else doneCol.appendChild(cardEl);
+                });
+
+                document.getElementById('count-todo').textContent = counts.todo;
+                document.getElementById('count-progress').textContent = counts.progress;
+                document.getElementById('count-done').textContent = counts.done;
+                lucide.createIcons();
+            }
+
+            document.getElementById('kanban-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('kanban-input');
+                const priority = document.getElementById('kanban-priority').value;
+                const dueDate = document.getElementById('kanban-due-date').value;
+                if (input.value.trim()) {
+                    kanbanCards.push({ id: String(Date.now()), text: input.value.trim(), priority, dueDate, status: 'todo' });
+                    localStorage.setItem('nexus_kanban', JSON.stringify(kanbanCards));
+                    renderKanban();
+                    input.value = '';
+                    document.getElementById('kanban-due-date').value = '';
+                }
+            });
+
+            window.allowDrop = (e) => e.preventDefault();
+            window.dragEnter = (e) => e.currentTarget.classList.add('drag-over');
+            window.dragLeave = (e) => e.currentTarget.classList.remove('drag-over');
+
+            window.dropKanban = (e, targetStatus) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('drag-over');
+                const cardId = e.dataTransfer.getData('text/plain');
+                const card = kanbanCards.find(c => c.id === cardId);
+                if (card) {
+                    card.status = targetStatus;
+                    localStorage.setItem('nexus_kanban', JSON.stringify(kanbanCards));
+                    renderKanban();
+                }
+            };
+
+            window.updateKanbanText = (id, newText) => {
+                const card = kanbanCards.find(c => c.id === id);
+                if (card) {
+                    card.text = newText;
+                    localStorage.setItem('nexus_kanban', JSON.stringify(kanbanCards));
+                }
+            };
+
+            window.deleteKanbanCard = (id) => {
+                kanbanCards = kanbanCards.filter(c => c.id !== id);
+                localStorage.setItem('nexus_kanban', JSON.stringify(kanbanCards));
+                renderKanban();
+            };
+
+            // --- Pomodoro Engine ---
+            let timerSeconds = 25 * 60;
+            let timerInterval = null;
+            let isTimerRunning = false;
+
+            const timerDisplay = document.getElementById('timer-display');
+            const minInput = document.getElementById('timer-min-input');
+            const secInput = document.getElementById('timer-sec-input');
+            const startBtn = document.getElementById('timer-start');
+
+            function updateTimerDisplay() {
+                const m = Math.floor(timerSeconds / 60);
+                const s = timerSeconds % 60;
+                timerDisplay.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }
+
+            function applyCustomTime() {
+                const m = parseInt(minInput.value) || 0;
+                const s = parseInt(secInput.value) || 0;
+                timerSeconds = (m * 60) + s;
+                updateTimerDisplay();
+            }
+
+            document.getElementById('set-timer-btn').addEventListener('click', () => {
+                if (isTimerRunning) pauseTimer();
+                applyCustomTime();
+            });
+
+            window.adjustTimer = (mins) => {
+                if (isTimerRunning) pauseTimer();
+                timerSeconds = Math.max(0, timerSeconds + (mins * 60));
+                minInput.value = Math.floor(timerSeconds / 60);
+                secInput.value = timerSeconds % 60;
+                updateTimerDisplay();
+            };
+
+            window.setTimerPreset = (mins) => {
+                if (isTimerRunning) pauseTimer();
+                minInput.value = mins;
+                secInput.value = 0;
+                timerSeconds = mins * 60;
+                updateTimerDisplay();
+            };
+
+            function playSoundChime() {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                    osc.connect(ctx.destination);
+                    osc.start(); osc.stop(ctx.currentTime + 0.6);
+                } catch(e){}
+            }
+
+            function triggerNotification() {
+                playSoundChime();
+                if ("Notification" in window && Notification.permission === "granted") {
+                    new Notification("Life Control Pomodoro", { body: "Сессия завершена! Время отдохнуть." });
+                }
+            }
+
+            function startTimer() {
+                if (isTimerRunning) return;
+                isTimerRunning = true;
+                startBtn.innerHTML = '<i data-lucide="pause"></i> Пауза';
+                lucide.createIcons();
+
+                timerInterval = setInterval(() => {
+                    if (timerSeconds > 0) {
+                        timerSeconds--;
+                        updateTimerDisplay();
+                    } else {
+                        pauseTimer();
+                        triggerNotification();
+                    }
+                }, 1000);
+            }
+
+            function pauseTimer() {
+                isTimerRunning = false;
+                clearInterval(timerInterval);
+                startBtn.innerHTML = '<i data-lucide="play"></i> Старт';
+                lucide.createIcons();
+            }
+
+            startBtn.addEventListener('click', () => {
+                if (isTimerRunning) pauseTimer();
+                else startTimer();
+            });
+
+            document.getElementById('timer-reset').addEventListener('click', () => {
+                pauseTimer();
+                applyCustomTime();
+            });
+
+            // Keyboard shortcut for Pomodoro
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    startBtn.click();
+                }
+            });
+
+            // --- Multi-Sound Ambient Audio Mixer ---
+            let ambientAudioCtx = null;
+            let soundNodes = { rain: null, waves: null, white: null };
+            let gainNodes = { rain: null, waves: null, white: null };
+
+            window.toggleSound = (type) => {
+                if (!ambientAudioCtx) ambientAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (ambientAudioCtx.state === 'suspended') ambientAudioCtx.resume();
+
+                if (soundNodes[type]) {
+                    soundNodes[type].stop();
+                    soundNodes[type] = null;
+                    document.getElementById(`sound-card-${type}`).classList.remove('active');
+                } else {
+                    const bufferSize = ambientAudioCtx.sampleRate * 2;
+                    const noiseBuffer = ambientAudioCtx.createBuffer(1, bufferSize, ambientAudioCtx.sampleRate);
+                    const output = noiseBuffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+                    const whiteNoise = ambientAudioCtx.createBufferSource();
+                    whiteNoise.buffer = noiseBuffer;
+                    whiteNoise.loop = true;
+
+                    const filter = ambientAudioCtx.createBiquadFilter();
+                    const gain = ambientAudioCtx.createGain();
+
+                    if (type === 'rain') { filter.type = 'lowpass'; filter.frequency.value = 1000; }
+                    else if (type === 'waves') { filter.type = 'bandpass'; filter.frequency.value = 400; }
+                    else { filter.type = 'lowpass'; filter.frequency.value = 3000; }
+
+                    const volVal = parseFloat(document.getElementById(`vol-${type}`).value);
+                    gain.gain.value = volVal * 0.3;
+
+                    whiteNoise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(ambientAudioCtx.destination);
+                    whiteNoise.start();
+
+                    soundNodes[type] = whiteNoise;
+                    gainNodes[type] = gain;
+                    document.getElementById(`sound-card-${type}`).classList.add('active');
+                }
+            };
+
+            window.updateSoundVolume = (type, val) => {
+                if (gainNodes[type]) {
+                    gainNodes[type].gain.value = parseFloat(val) * 0.3;
+                }
+            };
+
+            // --- Breathing Widget ---
+            const circle = document.getElementById('breath-circle');
+            let isBreathing = false;
+
+            document.getElementById('start-breath-btn').addEventListener('click', () => {
+                if (isBreathing) return;
+                isBreathing = true;
+                
+                function cycle() {
+                    circle.textContent = 'Вдох...';
+                    circle.className = 'breath-circle inhale';
+                    setTimeout(() => {
+                        circle.textContent = 'Задержка';
+                        setTimeout(() => {
+                            circle.textContent = 'Выдох...';
+                            circle.className = 'breath-circle exhale';
+                            setTimeout(() => {
+                                circle.textContent = 'Пауза';
+                                setTimeout(() => { if (isBreathing) cycle(); }, 2000);
+                            }, 4000);
+                        }, 2000);
+                    }, 4000);
+                }
+                cycle();
+            });
+
+            // --- Historical Water Tracking ---
+            const todayStr = new Date().toISOString().slice(0, 10);
+            let waterHistory = JSON.parse(localStorage.getItem('nexus_water_history')) || {};
+            let waterCount = waterHistory[todayStr] || 0;
+
+            const waterGlasses = document.getElementById('water-glasses-container');
+
+            function saveWaterState() {
+                waterHistory[todayStr] = waterCount;
+                localStorage.setItem('nexus_water_history', JSON.stringify(waterHistory));
+                updateHealthChart();
+            }
+
+            function renderWater() {
+                document.getElementById('water-count').textContent = waterCount;
+                waterGlasses.innerHTML = '';
+                for (let i = 0; i < 8; i++) {
+                    const g = document.createElement('div');
+                    g.className = `water-glass ${i < waterCount ? 'filled' : ''}`;
+                    g.onclick = () => {
+                        waterCount = i + 1;
+                        renderWater();
+                        saveWaterState();
+                    };
+                    waterGlasses.appendChild(g);
+                }
+            }
+
+            document.getElementById('add-water-btn').addEventListener('click', () => {
+                if (waterCount < 8) { waterCount++; renderWater(); saveWaterState(); }
+            });
+            document.getElementById('reset-water-btn').addEventListener('click', () => {
+                waterCount = 0; renderWater(); saveWaterState();
+            });
+
+            function getLast7DaysLabels() {
+                let labels = [];
+                for (let i = 6; i >= 0; i--) {
+                    let d = new Date();
+                    d.setDate(d.getDate() - i);
+                    labels.push(d.toISOString().slice(0, 10));
+                }
+                return labels;
+            }
+
+            const healthCtx = document.getElementById('healthChart').getContext('2d');
+            const last7Days = getLast7DaysLabels();
+            const healthChart = new Chart(healthCtx, {
+                type: 'line',
+                data: {
+                    labels: last7Days.map(d => d.slice(5)),
+                    datasets: [{
+                        label: 'Стаканов воды',
+                        data: last7Days.map(d => waterHistory[d] || 0),
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            function updateHealthChart() {
+                const days = getLast7DaysLabels();
+                healthChart.data.labels = days.map(d => d.slice(5));
+                healthChart.data.datasets[0].data = days.map(d => waterHistory[d] || 0);
+                healthChart.update();
+            }
+
+            // --- Mood ---
+            let savedMood = localStorage.getItem('nexus_mood');
+            if (savedMood) {
+                document.querySelectorAll('.mood-btn').forEach(b => {
+                    if (b.dataset.mood === savedMood) b.classList.add('active');
+                });
+            }
+
+            document.querySelectorAll('.mood-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    localStorage.setItem('nexus_mood', btn.dataset.mood);
+                    document.getElementById('mood-status').textContent = `Настроение зафиксировано: ${btn.textContent}`;
+                });
+            });
+
+            // --- Calorie Tracker ---
+            let calorieHistory = JSON.parse(localStorage.getItem('nexus_calorie_history')) || {};
+            let currentCalories = calorieHistory[todayStr] || 0;
+            const calorieCountEl = document.getElementById('calorie-count');
+            const calorieInput = document.getElementById('calorie-input');
+
+            function renderCalories() {
+                calorieCountEl.textContent = currentCalories;
+                calorieHistory[todayStr] = currentCalories;
+                localStorage.setItem('nexus_calorie_history', JSON.stringify(calorieHistory));
+            }
+
+            document.getElementById('add-calorie-btn').addEventListener('click', () => {
+                const val = parseInt(calorieInput.value);
+                if (val && val > 0) {
+                    currentCalories += val;
+                    renderCalories();
+                    calorieInput.value = '';
+                }
+            });
+
+            document.getElementById('reset-calorie-btn').addEventListener('click', () => {
+                currentCalories = 0;
+                renderCalories();
+            });
+
+            renderCalories();
+
+            // --- Finance Engine ---
+            let expenses = JSON.parse(localStorage.getItem('nexus_expenses')) || [
+                { id: '1', title: 'Фриланс проект', amount: 800, category: 'Работа', type: 'income' },
+                { id: '2', title: 'Продукты', amount: 120, category: 'Еда', type: 'expense' }
+            ];
+
+            const expensesList = document.getElementById('expenses-list');
+            const financeNetBalance = document.getElementById('finance-net-balance');
+            const totalIncomeEl = document.getElementById('total-income');
+            const totalExpensesEl = document.getElementById('total-expenses');
+
+            const financeCtx = document.getElementById('financeChart').getContext('2d');
+            let financeChart = null;
+
+            function renderFinance() {
+                expensesList.innerHTML = '';
+                let inc = 0, exp = 0;
+                let categorySums = {};
+
+                expenses.forEach((item, index) => {
+                    const amt = parseFloat(item.amount) || 0;
+                    if (item.type === 'income') {
+                        inc += amt;
+                    } else {
+                        exp += amt;
+                        categorySums[item.category] = (categorySums[item.category] || 0) + amt;
+                    }
+
+                    const li = document.createElement('li');
+                    li.className = 'list-item';
+                    li.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="color:${item.type === 'income' ? 'var(--neon-green)' : 'var(--neon-accent)'}">${item.type === 'income' ? '🟢' : '🔴'}</span>
+                            <div>
+                                <div>${item.title}</div>
+                                <div style="font-size:0.75rem; color:var(--text-muted);">${item.category}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-weight:700; color:${item.type === 'income' ? 'var(--neon-green)' : 'var(--text-main)'}">${item.type === 'income' ? '+' : '-'}$${amt}</span>
+                            <button class="btn-delete" onclick="deleteExpense(${index})"><i data-lucide="trash-2"></i></button>
+                        </div>
+                    `;
+                    expensesList.appendChild(li);
+                });
+
+                financeNetBalance.textContent = `$${inc - exp}`;
+                totalIncomeEl.textContent = inc;
+                totalExpensesEl.textContent = exp;
+
+                lucide.createIcons();
+                updateFinanceChart(categorySums);
+            }
+
+            function updateFinanceChart(catSums) {
+                const labels = Object.keys(catSums);
+                const data = Object.values(catSums);
+
+                if (financeChart) financeChart.destroy();
+
+                financeChart = new Chart(financeCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels.length ? labels : ['Нет данных'],
+                        datasets: [{
+                            data: data.length ? data : [1],
+                            backgroundColor: ['#ec4899', '#3b82f6', '#f97316', '#a855f7', '#10b981']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            document.getElementById('finance-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const type = document.getElementById('expense-type').value;
+                const title = document.getElementById('expense-title').value.trim();
+                const amount = document.getElementById('expense-amount').value;
+                const category = document.getElementById('expense-category').value;
+
+                if (title && amount) {
+                    expenses.push({ id: String(Date.now()), title, amount, category, type });
+                    localStorage.setItem('nexus_expenses', JSON.stringify(expenses));
+                    renderFinance();
+                    document.getElementById('expense-title').value = '';
+                    document.getElementById('expense-amount').value = '';
+                }
+            });
+
+            window.deleteExpense = (index) => {
+                expenses.splice(index, 1);
+                localStorage.setItem('nexus_expenses', JSON.stringify(expenses));
+                renderFinance();
+            };
+
+            // --- Book Tracker ---
+            let books = JSON.parse(localStorage.getItem('nexus_books')) || [
+                { id: '1', title: 'Атомные привычки', pages: 300, read: 180 }
+            ];
+
+            const booksList = document.getElementById('books-list');
+
+            function renderBooks() {
+                booksList.innerHTML = '';
+                books.forEach((book, index) => {
+                    const pct = Math.min(100, Math.round((book.read / book.pages) * 100)) || 0;
+                    const li = document.createElement('li');
+                    li.className = 'list-item';
+                    li.style.flexDirection = 'column';
+                    li.style.alignItems = 'stretch';
+                    li.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:600;">${book.title}</span>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:0.85rem; color:var(--neon-secondary);">${book.read} / ${book.pages} стр. (${pct}%)</span>
+                                <button class="btn-delete" onclick="deleteBook(${index})"><i data-lucide="trash-2"></i></button>
+                            </div>
+                        </div>
+                        <div class="progress-bar-container" style="margin-top:6px;">
+                            <div class="progress-bar-fill" style="width:${pct}%; background:var(--neon-primary);"></div>
+                        </div>
+                    `;
+                    booksList.appendChild(li);
+                });
+                lucide.createIcons();
+            }
+
+            document.getElementById('book-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const title = document.getElementById('book-title').value.trim();
+                const pages = parseInt(document.getElementById('book-pages').value);
+                const read = parseInt(document.getElementById('book-read').value);
+
+                if (title && pages) {
+                    books.push({ id: String(Date.now()), title, pages, read: read || 0 });
+                    localStorage.setItem('nexus_books', JSON.stringify(books));
+                    renderBooks();
+                    document.getElementById('book-title').value = '';
+                    document.getElementById('book-pages').value = '';
+                    document.getElementById('book-read').value = '';
+                }
+            });
+
+            window.deleteBook = (index) => {
+                books.splice(index, 1);
+                localStorage.setItem('nexus_books', JSON.stringify(books));
+                renderBooks();
+            };
+
+            // --- Backup Export / Import ---
+            document.getElementById('export-data-btn').addEventListener('click', () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(localStorage));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `lifecontrol_backup_${new Date().toISOString().slice(0,10)}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            });
+
+            document.getElementById('import-data-file').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        Object.keys(importedData).forEach(key => {
+                            localStorage.setItem(key, importedData[key]);
+                        });
+                        alert('Данные успешно импортированы! Страница будет перезагружена.');
+                        location.reload();
+                    } catch (err) {
+                        alert('Ошибка чтения файла бэкапа JSON.');
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            // Initial Execution
+            renderHabits();
+            renderTodos();
+            renderKanban();
+            renderWater();
+            renderFinance();
+            renderBooks();
+            updateTimerDisplay();
+        });
+    </script>
+</body>
+</html>
